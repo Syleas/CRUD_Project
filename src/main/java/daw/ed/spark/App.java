@@ -1,6 +1,10 @@
 package daw.ed.spark;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import spark.Request;
 import spark.Response;
 import spark.Route;
@@ -9,8 +13,11 @@ import static spark.Spark.post;
 
 public class App {
     private static ArrayList<Song> favoritos;
+    private static DB_Access db;
     public static void main(String[] args) {
         favoritos = new ArrayList();
+        db = new DB_Access();
+        db.abrirConexionBD();
 
         get(new Route("/") {
             @Override
@@ -88,6 +95,7 @@ public class App {
                 String name = request.queryParams("name");
                 Song s = new Song(length, name, author);
                 favoritos.add(s);
+                db.createFavorito(name, author, length);
                 return("<html>\n"
                         + "<head><title>Musix: Favorito Añadido</title></head>\n"
                         + "<body>\n"
@@ -115,12 +123,19 @@ public class App {
         get(new Route("/read") {
             @Override
             public Object handle(Request request, Response response) {
+                ResultSet resultados = db.getFavoritos();
+                int i = 0;
                 String html = new String("<html><head><title>Musix: Listado de Favoritos</title></head><body>");
-                for (int i = 0; i < favoritos.size(); i++){
-                    html = html.concat("<table border=\"1\"><th>Favorito Número "+ (i + 1) +"</th>"
-                            + "<tr><td>Nombre: </td><td>"+ favoritos.get(i).getName() +"</td></tr>"
-                            + "<tr><td>Autor: </td><td>"+ favoritos.get(i).getAuthor() + "</td></tr>"
-                            + "<tr><td>Duración: </td><td>"+ favoritos.get(i).getLength() + "</td></tr></table><br/><br/>");
+                try {
+                    while(resultados.next()){
+                        html = html.concat("<table border=\"1\"><th>Favorito Número "+ (i + 1) +"</th>"
+                            + "<tr><td>Nombre: </td><td>"+ resultados.getString(2) +"</td></tr>"
+                            + "<tr><td>Autor: </td><td>"+ resultados.getString(3) + "</td></tr>"
+                            + "<tr><td>Duración: </td><td>"+ resultados.getString(4) + "</td></tr></table><br/><br/>");
+                        i++;
+                    }
+                } catch (SQLException ex) {
+                    Logger.getLogger(App.class.getName()).log(Level.SEVERE, null, ex);
                 }
                 html = html.concat(""
                         + "     <form action=\"http://localhost:4567/redirect\" method=\"GET\">\n"
@@ -138,22 +153,29 @@ public class App {
             @Override
             public Object handle(Request request, Response response) {
                 String html = new String("<html><head><title>Musix: Listado de Favoritos</title></head><body>");
-                for (int i = 0; i < favoritos.size(); i++){
-                    html = html.concat("<table border=\"1\"><th>Favorito Número "+ (i + 1) +"</th>"
-                            + "<tr><td>Nombre: </td><td>"+ favoritos.get(i).getName() +"</td></tr>"
-                            + "<tr><td>Autor: </td><td>"+ favoritos.get(i).getAuthor() + "</td></tr>"
-                            + "<tr><td>Duración: </td><td>"+ favoritos.get(i).getLength() + "</td></tr>"
+                ResultSet resultados = db.getFavoritos();
+                int j = 0;
+                try {
+                    while(resultados.next()){
+                        html = html.concat("<table border=\"1\"><th>Favorito Número "+ (j + 1) +"</th>"
+                            + "<tr><td>Nombre: </td><td>"+ resultados.getString(2) +"</td></tr>"
+                            + "<tr><td>Autor: </td><td>"+ resultados.getString(3) + "</td></tr>"
+                            + "<tr><td>Duración: </td><td>"+ resultados.getString(4) + "</td></tr>"
                             + "<tr><td colspan=\"2\">"
                             + "     <form action=\"http://localhost:4567/updateSong\" method=\"POST\">\n"
                             + "        <fieldset>\n"
                             + "        <legend>Editar Favorito</legend>\n"
-                            + "        <input type=\"hidden\" name=\"name\" value=\""+ favoritos.get(i).getName() +"\"/>"
-                            + "        <input type=\"hidden\" name=\"author\" value=\""+ favoritos.get(i).getAuthor() +"\"/>"
-                            + "        <input type=\"hidden\" name=\"length\" value=\""+ favoritos.get(i).getLength() +"\"/>"
+                            + "        <input type=\"hidden\" name=\"name\" value=\""+ resultados.getString(2) +"\"/>"
+                            + "        <input type=\"hidden\" name=\"author\" value=\""+ resultados.getString(3) +"\"/>"
+                            + "        <input type=\"hidden\" name=\"length\" value=\""+ resultados.getString(4) +"\"/>"
                             + "        <input type=\"submit\" value=\"Editar\"/>\n"
                             + "        </fieldset>\n"
                             + "     </form>\n"
                             + "</td></tr></table><br>");
+                        j++;
+                    }
+                } catch (SQLException ex) {
+                    Logger.getLogger(App.class.getName()).log(Level.SEVERE, null, ex);
                 }
                 html = html.concat(""
                         + "     <form action=\"http://localhost:4567/redirect\" method=\"GET\">\n"
@@ -195,7 +217,7 @@ public class App {
                         + "        <input type=\"hidden\" name=\"nameP\" value=\""+ nameP +"\"/>"
                         + "        <input type=\"hidden\" name=\"authorP\" value=\""+ authorP +"\"/>"
                         + "        <input type=\"hidden\" name=\"lengthP\" value=\""+ lengthP +"\"/>"
-                        + "        <input type=\"submit\" value=\"Crear\"/>\n"
+                        + "        <input type=\"submit\" value=\"Editar\"/>\n"
                         + "        </fieldset>\n"
                         + "     </form>\n"
                         + "     <form action=\"http://localhost:4567/redirect\" method=\"GET\">\n"
@@ -218,12 +240,16 @@ public class App {
                 String lengthP = request.queryParams("lengthP");
                 String authorP = request.queryParams("authorP");
                 String nameP = request.queryParams("nameP");
-                for (int i = 0; i < favoritos.size(); i++){
-                    if(favoritos.get(i).getAuthor().equals(authorP) && favoritos.get(i).getName().equals(nameP) && favoritos.get(i).getLength().equals(lengthP)){
-                        favoritos.get(i).setAuthor(author);
-                        favoritos.get(i).setLength(length);
-                        favoritos.get(i).setName(name);
+                ResultSet resultados = db.getFavoritos();
+                int j = 0;
+                try {
+                    while(resultados.next()){
+                        if(resultados.getString(2).equals(nameP) && resultados.getString(3).equals(authorP) && resultados.getString(4).equals(lengthP)){
+                            db.updateFavorito(nameP, authorP, lengthP, name, author, length);
+                        }
                     }
+                } catch (SQLException ex) {
+                    Logger.getLogger(App.class.getName()).log(Level.SEVERE, null, ex);
                 }
                 return("<html>\n"
                         + "<head><title>Musix: Favorito Editado</title></head>\n"
@@ -244,23 +270,30 @@ public class App {
         get(new Route("/delete") {
             @Override
             public Object handle(Request request, Response response) {
+                ResultSet resultados = db.getFavoritos();
+                int j = 0;
                 String html = new String("<html><head><title>Musix: Listado de Favoritos</title></head><body>");
-                for (int i = 0; i < favoritos.size(); i++){
-                    html = html.concat("<table border=\"1\"><th>Favorito Número "+ (i + 1) +"</th>"
-                            + "<tr><td>Nombre: </td><td>"+ favoritos.get(i).getName() +"</td></tr>"
-                            + "<tr><td>Autor: </td><td>"+ favoritos.get(i).getAuthor() + "</td></tr>"
-                            + "<tr><td>Duración: </td><td>"+ favoritos.get(i).getLength() + "</td></tr>"
+                try {
+                    while(resultados.next()){
+                        html = html.concat("<table border=\"1\"><th>Favorito Número "+ (j + 1) +"</th>"
+                            + "<tr><td>Nombre: </td><td>"+ resultados.getString(2) +"</td></tr>"
+                            + "<tr><td>Autor: </td><td>"+ resultados.getString(3) + "</td></tr>"
+                            + "<tr><td>Duración: </td><td>"+ resultados.getString(4) + "</td></tr>"
                             + "<tr><td colspan=\"2\">"
                             + "     <form action=\"http://localhost:4567/delete\" method=\"POST\">\n"
                             + "        <fieldset>\n"
                             + "        <legend>Eliminar Favorito</legend>\n"
-                            + "        <input type=\"hidden\" name=\"name\" value=\""+ favoritos.get(i).getName() +"\"/>"
-                            + "        <input type=\"hidden\" name=\"author\" value=\""+ favoritos.get(i).getAuthor() +"\"/>"
-                            + "        <input type=\"hidden\" name=\"length\" value=\""+ favoritos.get(i).getLength() +"\"/>"
+                            + "        <input type=\"hidden\" name=\"name\" value=\""+ resultados.getString(2) +"\"/>"
+                            + "        <input type=\"hidden\" name=\"author\" value=\""+ resultados.getString(3) +"\"/>"
+                            + "        <input type=\"hidden\" name=\"length\" value=\""+ resultados.getString(4) +"\"/>"
                             + "        <input type=\"submit\" value=\"Eliminar\"/>\n"
                             + "        </fieldset>\n"
                             + "     </form>\n"
                             + "</td></tr></table><br/>");
+                        j++;
+                    }
+                } catch (SQLException ex) {
+                    Logger.getLogger(App.class.getName()).log(Level.SEVERE, null, ex);
                 }
                 html = html.concat(""
                         + "     <form action=\"http://localhost:4567/redirect\" method=\"GET\">\n"
@@ -280,11 +313,16 @@ public class App {
                 String lengthP = request.queryParams("length");
                 String authorP = request.queryParams("author");
                 String nameP = request.queryParams("name");
-                for (int i = 0; i < favoritos.size(); i++){
-                    if(favoritos.get(i).getAuthor().equals(authorP) && favoritos.get(i).getName().equals(nameP) && favoritos.get(i).getLength().equals(lengthP)){
-                        favoritos.remove(i);
-                        break;
+                ResultSet resultados = db.getFavoritos();
+                int j = 0;
+                try {
+                    while(resultados.next()){
+                        if(resultados.getString(2).equals(nameP) && resultados.getString(3).equals(authorP) && resultados.getString(4).equals(lengthP)){
+                            db.deleteFavorito(nameP, authorP, lengthP);
+                        }
                     }
+                } catch (SQLException ex) {
+                    Logger.getLogger(App.class.getName()).log(Level.SEVERE, null, ex);
                 }
                 return("<html>\n"
                         + "<head><title>Musix: Favorito Eliminado</title></head>\n"
