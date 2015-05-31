@@ -1,5 +1,3 @@
-package daw.ed.spark;
-
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -50,15 +48,15 @@ public class Song {
         return Length;
     }
 
-    public void setName(String Name) {
+    public void setTitle(String Name) {
         this.Name = Name;
     }
 
-    public void setAuthor(String Author) {
+    public void setContent(String Author) {
         this.Author = Author;
     }
 
-    public void setLength(String Length) {
+    public void setSummary(String Length) {
         this.Length = Length;
     }
 

@@ -1,7 +1,4 @@
-package daw.ed.spark;
-
 import com.mongodb.*;
-import daw.ed.spark.Song;
 
 import java.sql.Date;
 import java.util.ArrayList;
@@ -10,7 +7,6 @@ public class MongoDB_Access<T extends Song>{
     private DBCollection collection;
 
     public MongoDB_Access() {
-
         try {
             MongoClient mongoClient = new MongoClient("localhost");
             DB db = mongoClient.getDB("sparkledb");

@@ -10,7 +10,7 @@
                 <goal>org.codehaus.mojo:exec-maven-plugin:1.2.1:exec</goal>
             </goals>
             <properties>
-                <exec.args>-classpath %classpath daw.ed.spark.App</exec.args>
+                <exec.args>-classpath %classpath App</exec.args>
                 <exec.executable>java</exec.executable>
             </properties>
         </action>

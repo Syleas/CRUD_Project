@@ -1,5 +1,3 @@
-package daw.ed.spark;
-
 import static spark.Spark.*;
 
 import spark.ModelAndView;
@@ -11,6 +9,8 @@ import spark.template.freemarker.FreeMarkerRoute;
 import java.util.*;
 
 public class App {
+    //Utilizar ArrayList si MongoDB no funciona
+    //public static SongArrayList<Song> songDbService = new SongArrayList<Song>();
     public static MongoDB_Access<Song> songDbService = new MongoDB_Access<Song>();
 
     public static void main(String[] args) {
