@@ -1,57 +1,52 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package daw.ed.spark;
 
 import com.mongodb.*;
+import daw.ed.spark.Song;
 
 import java.sql.Date;
 import java.util.ArrayList;
 
-/**
- *
- * @author Javier
- */
-public class MongoDB_Access <T extends Song>{
+public class MongoDB_Access<T extends Song>{
     private DBCollection collection;
-    
+
     public MongoDB_Access() {
 
         try {
-            MongoClient mongoClient = new MongoClient("localhost:4567");
+            MongoClient mongoClient = new MongoClient("localhost");
             DB db = mongoClient.getDB("sparkledb");
-            collection = db.getCollection("Favoritos");
+            collection = db.getCollection("Songs");
+            System.out.println("Connecting to MongoDB@" + mongoClient.getAllAddress());
         } catch(Exception e) {
             System.out.println(e.getMessage());
         }
     }
-    
-    public Boolean create(T entity) {
-        BasicDBObject doc = new BasicDBObject("id",entity.getId()).
-                append("Nombre", entity.getName()).
-                append("Autor", entity.getAuthor()).
-                append("Duracion", entity.getLength());
 
+    public Boolean create(T entity) {
+        BasicDBObject doc = new BasicDBObject("Name", entity.getName()).
+                append("id", entity.getId()).
+                append("Author", entity.getAuthor()).
+                append("Length", entity.getLength()).
+                append("deleted", false).
+                append("createdAt", new Date(new java.util.Date().getTime()));
         collection.insert(doc);
         return true;
     }
-    
-    public T readOne(int id) {
+
+    @SuppressWarnings("unchecked")
+    public T readOne(int id) {        
         BasicDBObject query = new BasicDBObject("id", id);
         DBCursor cursor = collection.find(query);
-
         try {
             if(cursor.hasNext()) {
                 BasicDBObject doc = (BasicDBObject) cursor.next();
                 Song entity = new Song(
+                      doc.getString("Name"),
+                      doc.getString("Author"),
+                      doc.getString("Length"),
                       doc.getInt("id"),
-                      doc.getString("Nombre"),
-                      doc.getString("Autor"),
-                      doc.getString("Duracion")
+                      doc.getDate("createdAt"),
+                      doc.getBoolean("deleted")
                 );
-
                 return (T) entity;
             } else {
                 return null;
@@ -60,41 +55,39 @@ public class MongoDB_Access <T extends Song>{
             cursor.close();
         }
     }
-    
+
+    @SuppressWarnings("unchecked")
     public ArrayList<T> readAll() {
         DBCursor cursor = collection.find();
-
         ArrayList<Song> results = (ArrayList<Song>) new ArrayList<T>();
-
         try {
             while(cursor.hasNext()) {
                 BasicDBObject doc = (BasicDBObject) cursor.next();
-
                 Song entity = new Song(
-                      doc.getInt("id"),
-                      doc.getString("Nombre"),
-                      doc.getString("Autor"),
-                      doc.getString("Duracion")
+                        doc.getString("Name"),
+                        doc.getString("Author"),
+                        doc.getString("Length"),
+                        doc.getInt("id"),
+                        doc.getDate("createdAt"),
+                        doc.getBoolean("deleted")
                 );
                 results.add(entity);
             }
-
             return (ArrayList<T>) results;
         } finally {
             cursor.close();
         }
     }
-    
-    public Boolean update(int id, String Nombre, String Autor, String Duracion) {
+
+    public Boolean update(int id, String Name, String Author, String Length) {
         BasicDBObject query = new BasicDBObject("id", id);
         DBCursor cursor = collection.find(query);
-
         try {
             if(cursor.hasNext()) {
                 BasicDBObject doc = (BasicDBObject) cursor.next();
-                doc.put("Nombre", Nombre);
-                doc.put("Autor", Autor);
-                doc.put("Duracion", Duracion);
+                doc.put("Name", Name);
+                doc.put("Author", Author);
+                doc.getString("Length");
                 collection.save(doc);
                 return true;
             } else {
@@ -104,12 +97,10 @@ public class MongoDB_Access <T extends Song>{
             cursor.close();
         }
     }
-    
+
     public Boolean delete(int id) {
         BasicDBObject query = new BasicDBObject("id", id);
-
         DBCursor cursor = collection.find(query);
-
         try {
             if(cursor.hasNext()) {
                 collection.remove(cursor.next());
@@ -121,5 +112,4 @@ public class MongoDB_Access <T extends Song>{
             cursor.close();
         }
     }
-    
 }

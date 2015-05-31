@@ -1,456 +1,108 @@
 package daw.ed.spark;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import static spark.Spark.*;
+
+import spark.ModelAndView;
 import spark.Request;
 import spark.Response;
 import spark.Route;
-import static spark.Spark.get;
-import static spark.Spark.post;
+import spark.template.freemarker.FreeMarkerRoute;
+
+import java.util.*;
 
 public class App {
-    private static ArrayList<Song> favoritos;
-    private static DB_Access db;
+    public static MongoDB_Access<Song> songDbService = new MongoDB_Access<Song>();
+
     public static void main(String[] args) {
-        favoritos = new ArrayList();
-        db = new DB_Access();
-        db.abrirConexionBD();
-
-        get(new Route("/") {
+        get(new FreeMarkerRoute("/") {
             @Override
-            public Object handle(Request request, Response response) {
-                return "<html>\n"
-                        + "  <head><title>Musix</title></head>\n"
-                        + "  <body>\n"
-                        + "     <form action=\"http://localhost:4567/create\" method=\"GET\">\n"
-                        + "        <fieldset>\n"
-                        + "        <legend>Añadir un nuevo favorito</legend>\n"
-                        + "        <input type=\"submit\" value=\"Nuevo Favorito\"/>\n"
-                        + "        </fieldset>\n"
-                        + "     </form>\n"
-                        + "     <form action=\"http://localhost:4567/read\" method=\"GET\">\n"
-                        + "        <fieldset>\n"
-                        + "        <legend>Mostrar los favoritos</legend>\n"
-                        + "        <input type=\"submit\" value=\"Mostrar Favoritos\"/>\n"
-                        + "        </fieldset>\n"
-                        + "     </form>\n"
-                        + "     <form action=\"http://localhost:4567/update\" method=\"GET\">\n"
-                        + "        <fieldset>\n"
-                        + "        <legend>Actualizar un favorito</legend>\n"
-                        + "        <input type=\"submit\" value=\"Actualizar Favoritos\"/>\n"
-                        + "        </fieldset>\n"
-                        + "     </form>\n"
-                        + "     <form action=\"http://localhost:4567/delete\" method=\"GET\">\n"
-                        + "        <fieldset>\n"
-                        + "        <legend>Eliminar un favorito</legend>\n"
-                        + "        <input type=\"submit\" value=\"Eliminar Favoritos\"/>\n"
-                        + "        </fieldset>\n"
-                        + "     </form>\n"
-                        + "  </body>\n"
-                        + "</html>";
-            }
-        });
-        
-        get(new Route("/create") {
-            @Override
-            public Object handle(Request request, Response response) {
-
-                return "<html>\n"
-                        + "  <head><title>Musix: Nuevo Favorito</title></head>\n"
-                        + "  <body>\n"
-                        + "     <form action=\"http://localhost:4567/create\" method=\"POST\">\n"
-                        + "        <fieldset>\n"
-                        + "        <legend>Información de la Canción:</legend>\n"
-                        + "        <p>\n"
-                        + "            <input type=\"text\" name=\"name\" placeholder=\"Nombre\"></input>\n"
-                        + "        </p>    \n"
-                        + "        <p>\n"
-                        + "            <input type=\"text\" name=\"author\" placeholder=\"Autor\"></input>\n"
-                        + "        </p>    \n"
-                        + "        <p>\n"
-                        + "            <input type=\"text\" name=\"length\" placeholder=\"Duración\"></input>\n"
-                        + "        </p>    \n"
-                        + "        <input type=\"submit\" value=\"Crear\"/>\n"
-                        + "        </fieldset>\n"
-                        + "     </form>\n"
-                        + "     <form action=\"http://localhost:4567/redirect\" method=\"GET\">\n"
-                        + "        <fieldset>\n"
-                        + "        <legend>Volver al menú principal</legend>\n"
-                        + "        <input type=\"submit\" value=\"Volver\"/>\n"
-                        + "        </fieldset>\n"
-                        + "     </form>\n"
-                        + "  </body>\n"
-                        + "</html>";
-            }
-        });
-        
-        post(new Route("/create"){
-            @Override
-            public Object handle(Request request, Response response){
-                String length = request.queryParams("length");
-                String author = request.queryParams("author");
-                String name = request.queryParams("name");
-                Song s = new Song(length, name, author);
-                favoritos.add(s);
-                db.createFavorito(name, author, length);
-                return("<html>\n"
-                        + "<head><title>Musix: Favorito Añadido</title></head>\n"
-                        + "<body>\n"
-                        + "<table border=\"1\"><th>Favorito Creado:</th><tr><td>Nombre: </td><td>" + name + "</td></tr><br/>\n"
-                        + "<tr><td>Autor: </td><td>" + author + "</td></tr><br/>\n"
-                        + "<tr><td>Duración: </td><td>" + length + "</td></tr></table><br/><br/>\n"
-                        + "     <form action=\"http://localhost:4567/redirect\" method=\"GET\">\n"
-                        + "        <fieldset>\n"
-                        + "        <legend>Volver al menú principal</legend>\n"
-                        + "        <input type=\"submit\" value=\"Volver\"/>\n"
-                        + "        </fieldset>\n"
-                        + "     </form>\n"
-                        + "</body></html>");
-            }
-        });
-        
-        get(new Route("/redirect") {
-            @Override
-            public Object handle(Request request, Response response) {
-                response.redirect("/");
-                return response;
-            }
-        });
-        
-        get(new Route("/read") {
-            @Override
-            public Object handle(Request request, Response response) {
-                ResultSet resultados = db.getFavoritos();
-                int i = 0;
-                String html = new String("<html><head><title>Musix: Listado de Favoritos</title></head><body>");
-                try {
-                    while(resultados.next()){
-                        html = html.concat("<table border=\"1\"><th>Favorito Número "+ (i + 1) +"</th>"
-                            + "<tr><td>Nombre: </td><td>"+ resultados.getString(2) +"</td></tr>"
-                            + "<tr><td>Autor: </td><td>"+ resultados.getString(3) + "</td></tr>"
-                            + "<tr><td>Duración: </td><td>"+ resultados.getString(4) + "</td></tr></table><br/><br/>");
-                        i++;
-                    }
-                } catch (SQLException ex) {
-                    Logger.getLogger(App.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                html = html.concat(""
-                        + "     <form action=\"http://localhost:4567/redirect\" method=\"GET\">\n"
-                        + "        <fieldset>\n"
-                        + "        <legend>Volver al menú principal</legend>\n"
-                        + "        <input type=\"submit\" value=\"Volver\"/>\n"
-                        + "        </fieldset>\n"
-                        + "     </form>\n"
-                        + "</body></html>");
-                return html;
-            }
-        });
-        
-        get(new Route("/update") {
-            @Override
-            public Object handle(Request request, Response response) {
-                String html = new String("<html><head><title>Musix: Listado de Favoritos</title></head><body>");
-                ResultSet resultados = db.getFavoritos();
-                int j = 0;
-                try {
-                    while(resultados.next()){
-                        html = html.concat("<table border=\"1\"><th>Favorito Número "+ (j + 1) +"</th>"
-                            + "<tr><td>Nombre: </td><td>"+ resultados.getString(2) +"</td></tr>"
-                            + "<tr><td>Autor: </td><td>"+ resultados.getString(3) + "</td></tr>"
-                            + "<tr><td>Duración: </td><td>"+ resultados.getString(4) + "</td></tr>"
-                            + "<tr><td colspan=\"2\">"
-                            + "     <form action=\"http://localhost:4567/updateSong\" method=\"POST\">\n"
-                            + "        <fieldset>\n"
-                            + "        <legend>Editar Favorito</legend>\n"
-                            + "        <input type=\"hidden\" name=\"name\" value=\""+ resultados.getString(2) +"\"/>"
-                            + "        <input type=\"hidden\" name=\"author\" value=\""+ resultados.getString(3) +"\"/>"
-                            + "        <input type=\"hidden\" name=\"length\" value=\""+ resultados.getString(4) +"\"/>"
-                            + "        <input type=\"submit\" value=\"Editar\"/>\n"
-                            + "        </fieldset>\n"
-                            + "     </form>\n"
-                            + "</td></tr></table><br>");
-                        j++;
-                    }
-                } catch (SQLException ex) {
-                    Logger.getLogger(App.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                html = html.concat(""
-                        + "     <form action=\"http://localhost:4567/redirect\" method=\"GET\">\n"
-                        + "        <fieldset>\n"
-                        + "        <legend>Volver al menú principal</legend>\n"
-                        + "        <input type=\"submit\" value=\"Volver\"/>\n"
-                        + "        </fieldset>\n"
-                        + "     </form>\n"
-                        + "</body></html>");
-                return html;
-            }
-        });
-        
-        post(new Route("/updateSong") {
-            @Override
-            public Object handle(Request request, Response response) {
-                String lengthP = request.queryParams("length");
-                String authorP = request.queryParams("author");
-                String nameP = request.queryParams("name");
-                String html = new String("<html><head><title>Musix: Editar un Favorito</title></head><body>");
-                return "<html>\n"
-                        + "  <head><title>Musix: Editar Favorito</title></head>\n"
-                        + "  <body>\n"
-                        + "     <table border=\"1\"><th>Información del Favorito:</th><tr><td>Nombre: </td><td>" + nameP + "</td></tr><br/>\n"
-                        + "     <tr><td>Autor: </td><td>" + authorP + "</td></tr><br/>\n"
-                        + "     <tr><td>Duración: </td><td>" + lengthP + "</td></tr></table><br/><br/>\n"
-                        + "     <form action=\"http://localhost:4567/update\" method=\"POST\">\n"
-                        + "        <fieldset>\n"
-                        + "        <legend>Nueva Información:</legend>\n"
-                        + "        <p>\n"
-                        + "            <input type=\"text\" name=\"name\" placeholder=\"Nombre\"></input>\n"
-                        + "        </p>    \n"
-                        + "        <p>\n"
-                        + "            <input type=\"text\" name=\"author\" placeholder=\"Autor\"></input>\n"
-                        + "        </p>    \n"
-                        + "        <p>\n"
-                        + "            <input type=\"text\" name=\"length\" placeholder=\"Duración\"></input>\n"
-                        + "        </p>    \n"
-                        + "        <input type=\"hidden\" name=\"nameP\" value=\""+ nameP +"\"/>"
-                        + "        <input type=\"hidden\" name=\"authorP\" value=\""+ authorP +"\"/>"
-                        + "        <input type=\"hidden\" name=\"lengthP\" value=\""+ lengthP +"\"/>"
-                        + "        <input type=\"submit\" value=\"Editar\"/>\n"
-                        + "        </fieldset>\n"
-                        + "     </form>\n"
-                        + "     <form action=\"http://localhost:4567/redirect\" method=\"GET\">\n"
-                        + "        <fieldset>\n"
-                        + "        <legend>Volver al menú principal</legend>\n"
-                        + "        <input type=\"submit\" value=\"Volver\"/>\n"
-                        + "        </fieldset>\n"
-                        + "     </form>\n"
-                        + "  </body>\n"
-                        + "</html>";
-            }
-        });
-        
-        post(new Route("/update"){
-            @Override
-            public Object handle(Request request, Response response){
-                String length = request.queryParams("length");
-                String author = request.queryParams("author");
-                String name = request.queryParams("name");
-                String lengthP = request.queryParams("lengthP");
-                String authorP = request.queryParams("authorP");
-                String nameP = request.queryParams("nameP");
-                ResultSet resultados = db.getFavoritos();
-                int j = 0;
-                try {
-                    while(resultados.next()){
-                        if(resultados.getString(2).equals(nameP) && resultados.getString(3).equals(authorP) && resultados.getString(4).equals(lengthP)){
-                            db.updateFavorito(nameP, authorP, lengthP, name, author, length);
+            public ModelAndView handle(Request request, Response response) {
+                Map<String, Object> viewObjects = new HashMap<String, Object>();
+                ArrayList<Song> songs = songDbService.readAll();
+                if (songs.isEmpty()) {
+                    viewObjects.put("hasNoSongs", "No tienes canciones favoritas.");
+                } else {
+                    Deque<Song> showSongs = new ArrayDeque<Song>();
+                    for (Song song : songs) {
+                        if (song.readable()) {
+                            showSongs.addFirst(song);
                         }
                     }
-                } catch (SQLException ex) {
-                    Logger.getLogger(App.class.getName()).log(Level.SEVERE, null, ex);
+                    viewObjects.put("songs", showSongs);
                 }
-                return("<html>\n"
-                        + "<head><title>Musix: Favorito Editado</title></head>\n"
-                        + "<body>\n"
-                        + "<table border=\"1\"><tr><td>Nombre: </td><td>" + name + "</td></tr><br/>\n"
-                        + "<tr><td>Autor: </td><td>" + author + "</td></tr><br/>\n"
-                        + "<tr><td>Duración: </td><td>" + length + "</td></tr></table><br/><br/>\n"
-                        + "     <form action=\"http://localhost:4567/redirect\" method=\"GET\">\n"
-                        + "        <fieldset>\n"
-                        + "        <legend>Volver al menú principal</legend>\n"
-                        + "        <input type=\"submit\" value=\"Volver\"/>\n"
-                        + "        </fieldset>\n"
-                        + "     </form>\n"
-                        + "</body></html>");
+                viewObjects.put("templateName", "songList.ftl");
+                return modelAndView(viewObjects, "layout.ftl");
             }
         });
-        
-        get(new Route("/delete") {
+
+        get(new FreeMarkerRoute("/song/create") {
             @Override
             public Object handle(Request request, Response response) {
-                ResultSet resultados = db.getFavoritos();
-                int j = 0;
-                String html = new String("<html><head><title>Musix: Listado de Favoritos</title></head><body>");
-                try {
-                    while(resultados.next()){
-                        html = html.concat("<table border=\"1\"><th>Favorito Número "+ (j + 1) +"</th>"
-                            + "<tr><td>Nombre: </td><td>"+ resultados.getString(2) +"</td></tr>"
-                            + "<tr><td>Autor: </td><td>"+ resultados.getString(3) + "</td></tr>"
-                            + "<tr><td>Duración: </td><td>"+ resultados.getString(4) + "</td></tr>"
-                            + "<tr><td colspan=\"2\">"
-                            + "     <form action=\"http://localhost:4567/delete\" method=\"POST\">\n"
-                            + "        <fieldset>\n"
-                            + "        <legend>Eliminar Favorito</legend>\n"
-                            + "        <input type=\"hidden\" name=\"name\" value=\""+ resultados.getString(2) +"\"/>"
-                            + "        <input type=\"hidden\" name=\"author\" value=\""+ resultados.getString(3) +"\"/>"
-                            + "        <input type=\"hidden\" name=\"length\" value=\""+ resultados.getString(4) +"\"/>"
-                            + "        <input type=\"submit\" value=\"Eliminar\"/>\n"
-                            + "        </fieldset>\n"
-                            + "     </form>\n"
-                            + "</td></tr></table><br/>");
-                        j++;
-                    }
-                } catch (SQLException ex) {
-                    Logger.getLogger(App.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                html = html.concat(""
-                        + "     <form action=\"http://localhost:4567/redirect\" method=\"GET\">\n"
-                        + "        <fieldset>\n"
-                        + "        <legend>Volver al menú principal</legend>\n"
-                        + "        <input type=\"submit\" value=\"Volver\"/>\n"
-                        + "        </fieldset>\n"
-                        + "     </form>\n"
-                        + "</body></html>");
-                return html;
-            }
-        });
-        
-        post(new Route("/delete"){
-            @Override
-            public Object handle(Request request, Response response){
-                String lengthP = request.queryParams("length");
-                String authorP = request.queryParams("author");
-                String nameP = request.queryParams("name");
-                ResultSet resultados = db.getFavoritos();
-                int j = 0;
-                try {
-                    while(resultados.next()){
-                        if(resultados.getString(2).equals(nameP) && resultados.getString(3).equals(authorP) && resultados.getString(4).equals(lengthP)){
-                            db.deleteFavorito(nameP, authorP, lengthP);
-                        }
-                    }
-                } catch (SQLException ex) {
-                    Logger.getLogger(App.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                return("<html>\n"
-                        + "<head><title>Musix: Favorito Eliminado</title></head>\n"
-                        + "<body>\n"
-                        + "     <h2>Favorito Eliminado.</h1><br/><br/>"
-                        + "     <form action=\"http://localhost:4567/redirect\" method=\"GET\">\n"
-                        + "        <fieldset>\n"
-                        + "        <legend>Volver al menú principal</legend>\n"
-                        + "        <input type=\"submit\" value=\"Volver\"/>\n"
-                        + "        </fieldset>\n"
-                        + "     </form>\n"
-                        + "</body></html>");
+                Map<String, Object> viewObjects = new HashMap<String, Object>();
+                viewObjects.put("templateName", "songForm.ftl");
+                return modelAndView(viewObjects, "layout.ftl");
             }
         });
 
-        /*
-        get(new Route("/hello") {
+        post(new Route("/song/create") {
             @Override
             public Object handle(Request request, Response response) {
-                return "<h1>Hello Spark MVC Framework!</h1>";
-            }
-        });
-        
-        get(new Route("/hello/:name") {
-            @Override
-            public Object handle(Request request, Response response) {
-                return "<h1>Hello " + request.params(":name") + " </h1>";
-            }
-        });
-
-        get(new Route("/request/info") {
-            @Override
-            public Object handle(Request request, Response response) {
-                return ("<h1>Información de la petición:</h1>"
-                        + "<ul><li>IP del cliente: " + request.ip() + " </li>"
-                        + "<li> Request method: " + request.requestMethod() + " </li>"
-                        + "<li> Url solicitada: " + request.url() + " </li>"
-                        + "<li> User Agent: " + request.userAgent() + "</li>"
-                        + "<li> Host: " + request.host() + "</li>"
-                        + "<li> Content type: " + request.contentType() + "</li>"
-                        + "<li> Content length: " + request.contentLength() + "</li>"
-                        + "<li> Headers: " + request.headers(null) + "</li></ul>");
-
-            }
-        });
-
-        get(new Route("/protected") {
-            @Override
-            public Object handle(Request request, Response response) {
-                halt(401, "Acceso no autorizado");
-
-                return null;
-            }
-        });
-
-        get(new Route("/favorite_fruit") {
-            @Override
-            public Object handle(Request request, Response response) {
-                return request.queryParams("fruit");
-
-            }
-        });
-        get(new Route("/favorite_fruit") {
-            @Override
-            public Object handle(Request request, Response response) {
-
-                return "<html>\n"
-                        + "  <head><title>Fruit Picker</title></head>\n"
-                        + "  <body>\n"
-                        + "     <form action=\"http://localhost:4567/favorite_fruit\" method=\"POST\">\n"
-                        + "        <p>What is your favorite fruit?</p>\n"
-                        + "          <p>\n"
-                        + "             <input type=\"radio\" name=\"fruit\" value=\"Peras\">Peras</input>\n"
-                        + "          </p>    \n"
-                        + "          <p>\n"
-                        + "             <input type=\"radio\" name=\"fruit\" value=\"Manzanas\">Manzanas</input>\n"
-                        + "          </p>    \n"
-                        + "          <p>\n"
-                        + "             <input type=\"radio\" name=\"fruit\" value=\"Naranjas\">Naranjas</input>\n"
-                        + "          </p>    \n"
-                        + "          <p>\n"
-                        + "             <input type=\"radio\" name=\"fruit\" value=\"Naranjas\">Naranjas</input>\n"
-                        + "          </p>            \n"
-                        + "        <input type=\"submit\" value=\"Submit\"/>\n"
-                        + "     </form>\n"
-                        + "  </body>\n"
-                        + "</html>";
-            }
-        });
-        
-        
-        get(new FreeMarkerRoute("/freemarker/hello") {
-            @Override
-            public ModelAndView handle(Request request, Response response) {
+                String Name = request.queryParams("song-Name");
+                String Length = request.queryParams("song-Length");
+                String Author = request.queryParams("song-Author");
+                Song song = new Song(songDbService.readAll().size(), Name, Length, Author);
+                songDbService.create(song);
+                response.status(201);
                 response.redirect("/");
-                return modelAndView(null, "hello.ftl");
+                return "";
             }
         });
-        
-        get(new FreeMarkerRoute("/freemarker/hello2") {
+
+        get(new FreeMarkerRoute("/song/read/:id") {
             @Override
-            public ModelAndView handle(Request request, Response response) {
-                Map<String,Object> data = new HashMap<>();
-                data.put("name","Fulajnjna");
-                data.put("numero",1);
-                data.put("colores", Arrays.asList("Rojo", "Azul", "Verde", "Amarillo"));
-                return modelAndView(data, "hello2.ftl");
+            public Object handle(Request request, Response response) {
+                Integer id = Integer.parseInt(request.params(":id"));
+                Map<String, Object> viewObjects = new HashMap<String, Object>();
+                viewObjects.put("templateName", "songRead.ftl");
+                viewObjects.put("song", songDbService.readOne(id));
+                return modelAndView(viewObjects, "layout.ftl");
             }
         });
-        
-        get(new FreeMarkerRoute("/freemarker/base") {
+
+        get(new FreeMarkerRoute("/song/update/:id") {
             @Override
-            public ModelAndView handle(Request request, Response response) {
-                //response.redirect("/");
-                //Map<String,Object> data = new HashMap<>();
-                //data.put("name","dedede");
-                return modelAndView(null, "base.ftl");
+            public Object handle(Request request, Response response) {
+                Integer id = Integer.parseInt(request.params(":id"));
+                Map<String, Object> viewObjects = new HashMap<String, Object>();
+                viewObjects.put("templateName", "songForm.ftl");
+                viewObjects.put("song", songDbService.readOne(id));
+                return modelAndView(viewObjects, "layout.ftl");
             }
         });
-        
-        get(new FreeMarkerRoute("/freemarker/content") {
+
+        post(new Route("/song/update/:id") {
             @Override
-            public ModelAndView handle(Request request, Response response) {
-                //response.redirect("/");
-                Map<String,Object> data = new HashMap<>();
-                data.put("name","dedede");
-                return modelAndView(data, "content.ftl");
+            public Object handle(Request request, Response response) {
+                Integer id = Integer.parseInt(request.queryParams("song-id"));
+                String Name = request.queryParams("song-Name");
+                String Length = request.queryParams("song-Length");
+                String Author = request.queryParams("song-Author");
+                songDbService.update(id, Name, Length, Author);
+                response.status(200);
+                response.redirect("/");
+                return "";
             }
-        });*/
+        });
+
+        get(new Route("/song/delete/:id") {
+            @Override
+            public Object handle(Request request, Response response) {
+                Integer id = Integer.parseInt(request.params(":id"));
+                songDbService.delete(id);
+                response.status(200);
+                response.redirect("/");
+                return "";
+            }
+        });
     }
 }

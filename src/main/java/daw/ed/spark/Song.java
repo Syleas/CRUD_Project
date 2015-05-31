@@ -1,50 +1,93 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package daw.ed.spark;
 
-/**
- *
- * @author Javier
- */
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 public class Song {
-    private String length;
-    private String name;
-    private String author;
+    private String Name;
+    private String Author;
+    private Date createdAt;
+    private String Length;
+    private Integer id;
+    private Boolean deleted;
 
-    public Song() {
+    public Song(String Name,  String Author,String Length, Integer size) {
+        this.Name = Name;
+        this.Author = Author;
+        this.Length = Length;
+        this.createdAt = new Date();
+        this.id = size;
+        this.deleted = false;
     }
 
-    public Song(String length, String name, String author) {
-        this.length = length;
-        this.name = name;
-        this.author = author;
+    public Song(Integer id, String Name, String Author, String Length) {
+        this.Name = Name;
+        this.Author = Author;
+        this.Length = Length;
+        this.deleted = false;
+        this.id = id;
     }
 
-    public String getLength() {
-        return length;
-    }
-
-    public void setLength(String length) {
-        this.length = length;
+    public Song(String Name, String Author,String Length, Integer id, Date createdAt, Boolean deleted) {
+        this.Name = Name;
+        this.Author = Author;
+        this.Length = Length;
+        this.createdAt = createdAt;
+        this.id = id;
+        this.deleted = deleted;
     }
 
     public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
+        return Name;
     }
 
     public String getAuthor() {
-        return author;
+        return Author;
     }
 
-    public void setAuthor(String author) {
-        this.author = author;
+    public String getLength() {
+        return Length;
     }
-    
+
+    public void setName(String Name) {
+        this.Name = Name;
+    }
+
+    public void setAuthor(String Author) {
+        this.Author = Author;
+    }
+
+    public void setLength(String Length) {
+        this.Length = Length;
+    }
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void delete() {
+        this.deleted = true;
+    }
+
+    public Boolean readable() {
+        return !this.deleted;
+    }
+
+    public String getCreatedAt() {
+        DateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
+        return dateFormat.format(this.createdAt);
+    }
+
+    public String getEditLink() {
+        return "/song/update/" + this.id;
+    }
+
+    public String getDeleteLink() {
+        return "/song/delete/" + this.id;
+    }
+
+    public String getLengthLink() {
+        return "<a href='/song/read/" + this.id + "'>" + this.Length + "</a>";
+    }
 }
